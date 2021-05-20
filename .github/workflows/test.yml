@@ -2,7 +2,7 @@ name: Psalm Security Scan
 
 on:
   push:
-    branch: [main]
+    branch: [master]
 
 jobs:
   psalm:
