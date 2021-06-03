@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OpenTelemetry\Tests\Contrib\Unit;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response;
 use InvalidArgumentException;
 use OpenTelemetry\Contrib\Newrelic\Exporter;
-use OpenTelemetry\Sdk\Trace\Baggage;
 use OpenTelemetry\Sdk\Trace\Span;
+use OpenTelemetry\Sdk\Trace\SpanContext;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -29,11 +31,11 @@ class NewrelicExporterTest extends TestCase
             new Response($responseStatus)
         );
 
-        $exporter = new Exporter('test.newrelic', 'scheme://host:123/path', '', null, $client);
+        $exporter = new Exporter('test.newrelic', 'scheme://host:123/path', '', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.newrelic.span', Baggage::generate())])
+            $exporter->export([new Span('test.newrelic.span', SpanContext::generate())])
         );
     }
 
@@ -60,11 +62,11 @@ class NewrelicExporterTest extends TestCase
         $client = self::createMock(ClientInterface::class);
         $client->method('sendRequest')->willThrowException($exception);
 
-        $exporter = new Exporter('test.newrelic', 'scheme://host:123/path', '', null, $client);
+        $exporter = new Exporter('test.newrelic', 'scheme://host:123/path', '', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.newrelic.span', Baggage::generate())])
+            $exporter->export([new Span('test.newrelic.span', SpanContext::generate())])
         );
     }
 
@@ -93,7 +95,7 @@ class NewrelicExporterTest extends TestCase
     {
         $this->assertEquals(
             Exporter::SUCCESS,
-            (new Exporter('test.newrelic', 'scheme://host:123/path', ''))->export([])
+            (new Exporter('test.newrelic', 'scheme://host:123/path', '', new Client(), new HttpFactory(), new HttpFactory()))->export([])
         );
     }
 
@@ -105,7 +107,7 @@ class NewrelicExporterTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new Exporter('test.newrelic', $invalidDsn, '');
+        new Exporter('test.newrelic', $invalidDsn, '', new Client(), new HttpFactory(), new HttpFactory());
     }
 
     public function invalidDsnDataProvider()
@@ -124,7 +126,7 @@ class NewrelicExporterTest extends TestCase
      */
     public function failsIfNotRunning()
     {
-        $exporter = new Exporter('test.newrelic', 'scheme://host/path', '');
+        $exporter = new Exporter('test.newrelic', 'scheme://host/path', '', new Client(), new HttpFactory(), new HttpFactory());
         $span = $this->createMock(Span::class);
         $exporter->shutdown();
 

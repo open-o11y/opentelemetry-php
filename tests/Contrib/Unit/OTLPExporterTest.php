@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OpenTelemetry\Tests\Contrib\Unit;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response;
 use OpenTelemetry\Contrib\Otlp\Exporter;
-use OpenTelemetry\Sdk\Trace\Baggage;
 use OpenTelemetry\Sdk\Trace\Span;
+use OpenTelemetry\Sdk\Trace\SpanContext;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -27,11 +29,11 @@ class OTLPExporterTest extends TestCase
             new Response($responseStatus)
         );
 
-        $exporter = new Exporter('test.otlp', $client);
+        $exporter = new Exporter('test.otlp', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.otlp.span', Baggage::generate())])
+            $exporter->export([new Span('test.otlp.span', SpanContext::generate())])
         );
     }
 
@@ -58,11 +60,11 @@ class OTLPExporterTest extends TestCase
         $client = self::createMock(ClientInterface::class);
         $client->method('sendRequest')->willThrowException($exception);
 
-        $exporter = new Exporter('test.otlp');
+        $exporter = new Exporter('test.otlp', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.otlp.span', Baggage::generate())])
+            $exporter->export([new Span('test.otlp.span', SpanContext::generate())])
         );
     }
 
@@ -87,7 +89,7 @@ class OTLPExporterTest extends TestCase
     {
         $this->assertEquals(
             Exporter::SUCCESS,
-            (new Exporter('test.otlp'))->export([])
+            (new Exporter('test.otlp', new Client(), new HttpFactory(), new HttpFactory()))->export([])
         );
     }
     /**
@@ -95,7 +97,7 @@ class OTLPExporterTest extends TestCase
      */
     public function failsIfNotRunning()
     {
-        $exporter = new Exporter('test.otlp');
+        $exporter = new Exporter('test.otlp', new Client(), new HttpFactory(), new HttpFactory());
         $span = $this->createMock(Span::class);
         $exporter->shutdown();
 

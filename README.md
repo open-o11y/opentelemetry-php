@@ -18,7 +18,7 @@ Most of our communication is done on CNCF Slack, in the [otel-php](https://cloud
 Our meetings are held weekly on zoom on Wednesdays at 10:30am PST / 1:30pm EST.  
 A Google calendar invite with the included zoom link can be found [here](https://calendar.google.com/event?action=TEMPLATE&tmeid=N2VtZXZmYnVmbzZkYjZkbTYxdjZvYTdxN21fMjAyMDA5MTZUMTczMDAwWiBrYXJlbnlyeHVAbQ&tmsrc=google.com_b79e3e90j7bbsa2n2p5an5lf60%40group.calendar.google.com&scp=ALL)
 
-Our open issues can all be found in the [github issues tab](https://github.com/open-telemetry/opentelemetry-php/issues).  Feel free to reach out in gitter if you have any additional questions about these issues; we are always happy to talk through implementation details.
+Our open issues can all be found in the [github issues tab](https://github.com/open-telemetry/opentelemetry-php/issues).  Feel free to reach out on Slack if you have any additional questions about these issues; we are always happy to talk through implementation details.
 
 ## Installation
 The recommended way to install the library is through [Composer](http://getcomposer.org):
@@ -66,15 +66,14 @@ In order to update all the vendored libraries in the `/vendor` directory.
 
 ## Pull Requests
 
-Once you've made the update to the codebase that you'd like to submit, you may [create a pull request](https://docs.
-github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request) to the opentelemetry-php project.
+Once you've made the update to the codebase that you'd like to submit, you may [create a pull request](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request) to the opentelemetry-php project.
 
 After you open the pull request, the CI/CD pipeline will run all of the associated [github actions](https://github.com/open-telemetry/opentelemetry-php/actions/workflows/php.yml). 
   
 You can simulate the important github actions locally before you submit your PR by running the following command:
 
 ```bash
-make install && make update && make style && make test && make phan && make psalm
+make install && make update && make style && make test && make phan && make psalm && make phpstan
 ```
 
 from your bash compatible shell.  This does the following things:
@@ -82,7 +81,7 @@ from your bash compatible shell.  This does the following things:
 * Installs all the required dependencies for the project and ensures they are up to date
 * Uses [php-cs-fixer](https://github.com/FriendsOfPHP/PHP-CS-Fixer) to style your code using our style preferences.
 * Runs all of our [phpunit](https://phpunit.de/) unit tests.
-* Performs static analysis with [Phan](https://github.com/phan/phan) and [Psalm](https://psalm.dev/)
+* Performs static analysis with [Phan](https://github.com/phan/phan), [Psalm](https://psalm.dev/) and [PHPStan](https://phpstan.org/user-guide/getting-started)
 
 
 ## Proto Generation
@@ -125,10 +124,19 @@ Usually this process is performed as part of a code checkin.  This process runs 
 We also use [Psalm](https://psalm.dev/) as a second static analysis tool.  
 You can use our psalm docker wrapper to easily perform static analysis on your changes.
 
-Execute `make psalm` from your bash compatible shell. This process will return 0 on success. Usually this process is
+To run Psalm, one can run the following command:
+```bash
+make psalm
+```
+from your bash compatible shell. This process will return 0 on success. Usually this process is performed as part of a code checkin. This process runs during CI and is a required check. Code that doesn't match the standards that we have defined in our [psalm config](https://github.com/open-telemetry/opentelemetry-php/blob/main/psalm.xml.dist) will emit a failure in CI.
+
+We use [PHPStan](https://github.com/phpstan/phpstan) as our third tool for static analysis. 
+You can use our PHPStan docker wrapper to easily perform static analysis on your changes.
+
+Execute `make phpstan` from your bash compatible shell. This process will return 0 on success. Usually this process is
 performed as part of a code checkin. This process runs during CI and is a required check. Code that doesn't match the
 standards that we have defined in
-our [psalm config](https://github.com/open-telemetry/opentelemetry-php/blob/main/psalm.xml.dist) will emit a failure
+our [PHPStan config](https://github.com/open-telemetry/opentelemetry-php/blob/main/phpstan.neon.dist) will emit a failure
 in CI.
 
 ## Testing

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OpenTelemetry\Tests\Contrib\Unit;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response;
 use InvalidArgumentException;
 use OpenTelemetry\Contrib\Zipkin\Exporter;
-use OpenTelemetry\Sdk\Trace\Baggage;
 use OpenTelemetry\Sdk\Trace\Span;
+use OpenTelemetry\Sdk\Trace\SpanContext;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -29,11 +31,11 @@ class ZipkinExporterTest extends TestCase
             new Response($responseStatus)
         );
 
-        $exporter = new Exporter('test.zipkin', 'scheme://host:123/path', null, $client);
+        $exporter = new Exporter('test.zipkin', 'scheme://host:123/path', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.zipkin.span', Baggage::generate())])
+            $exporter->export([new Span('test.zipkin.span', SpanContext::generate())])
         );
     }
 
@@ -60,11 +62,11 @@ class ZipkinExporterTest extends TestCase
         $client = self::createMock(ClientInterface::class);
         $client->method('sendRequest')->willThrowException($exception);
 
-        $exporter = new Exporter('test.zipkin', 'scheme://host:123/path', null, $client);
+        $exporter = new Exporter('test.zipkin', 'scheme://host:123/path', $client, new HttpFactory(), new HttpFactory());
 
         $this->assertEquals(
             $expected,
-            $exporter->export([new Span('test.zipkin.span', Baggage::generate())])
+            $exporter->export([new Span('test.zipkin.span', SpanContext::generate())])
         );
     }
 
@@ -93,7 +95,7 @@ class ZipkinExporterTest extends TestCase
     {
         $this->assertEquals(
             Exporter::SUCCESS,
-            (new Exporter('test.zipkin', 'scheme://host:123/path'))->export([])
+            (new Exporter('test.zipkin', 'scheme://host:123/path', new Client(), new HttpFactory(), new HttpFactory()))->export([])
         );
     }
 
@@ -105,7 +107,7 @@ class ZipkinExporterTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new Exporter('test.zipkin', $invalidDsn);
+        new Exporter('test.zipkin', $invalidDsn, new Client(), new HttpFactory(), new HttpFactory());
     }
 
     public function invalidDsnDataProvider()
@@ -126,7 +128,7 @@ class ZipkinExporterTest extends TestCase
      */
     public function failsIfNotRunning()
     {
-        $exporter = new Exporter('test.jaeger', 'scheme://host:123/path');
+        $exporter = new Exporter('test.jaeger', 'scheme://host:123/path', new Client(), new HttpFactory(), new HttpFactory());
         $span = $this->createMock(Span::class);
         $exporter->shutdown();
 
