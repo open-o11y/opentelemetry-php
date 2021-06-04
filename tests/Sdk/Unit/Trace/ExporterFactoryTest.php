@@ -8,7 +8,6 @@ use OpenTelemetry\Contrib as Path;
 use OpenTelemetry\Sdk\Trace\ExporterFactory as ExporterFactory;
 use PHPUnit\Framework\TestCase;
 
-
 class ExporterFactoryTest extends TestCase
 {
     /**
@@ -21,11 +20,9 @@ class ExporterFactoryTest extends TestCase
         $exporter = $factory->fromConnectionString(getenv('ENDPOINT'));
         $this->assertInstanceOf(Path\Zipkin\Exporter::class, $exporter);
         
-       
         putenv('ENDPOINT=jaeger+http://jaeger:9412/api/v2/spans');
         $factory = new ExporterFactory('test.jaeger');
         $exporter = $factory->fromConnectionString(getenv('ENDPOINT'));
         $this->assertInstanceOf(Path\Jaeger\Exporter::class, $exporter);
-        
     }
 }
