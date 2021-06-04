@@ -21,9 +21,8 @@ class ExporterFactory
       * Currently only supports Jaeger and Zipkin exporters
       *
       * @param string $configurationString String containing unextracted information for Exporter creation
-      * @return Exporter dynamically chosen exporter based on the specifications in the input string
       */
-    public function fromConnectionString(string $configurationString) : Exporter
+    public function fromConnectionString(string $configurationString)
     {
         $strArr = explode('+', $configurationString);
         $contribName = $strArr[0];

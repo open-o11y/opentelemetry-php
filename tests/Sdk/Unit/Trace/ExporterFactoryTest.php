@@ -15,14 +15,14 @@ class ExporterFactoryTest extends TestCase
      */
     public function testIfExporterHasCorrectEndpoint()
     {
-        putenv('ENDPOINT=zipkin+http://zipkin:9411/api/v2/spans');
+        $input = 'zipkin+http://zipkin:9411/api/v2/spans';
         $factory = new ExporterFactory('test.zipkin');
-        $exporter = $factory->fromConnectionString(getenv('ENDPOINT'));
+        $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\Zipkin\Exporter::class, $exporter);
         
-        putenv('ENDPOINT=jaeger+http://jaeger:9412/api/v2/spans');
+        $input = 'jaeger+http://jaeger:9412/api/v2/spans';
         $factory = new ExporterFactory('test.jaeger');
-        $exporter = $factory->fromConnectionString(getenv('ENDPOINT'));
+        $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\Jaeger\Exporter::class, $exporter);
     }
 }
