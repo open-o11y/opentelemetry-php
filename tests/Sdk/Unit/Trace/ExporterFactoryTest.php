@@ -25,8 +25,7 @@ class ExporterFactoryTest extends TestCase
         $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\Jaeger\Exporter::class, $exporter);
 
-        putenv('NEW_RELIC_INSERT_KEY=exampleKey');
-        $input = 'newrelic+https://trace-api.newrelic.com/trace/v1';
+        $input = 'newrelic+https://trace-api.newrelic.com/trace/v1?licenseKey="23423423';
         $factory = new ExporterFactory('test.newrelic');
         $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\Newrelic\Exporter::class, $exporter);
@@ -41,8 +40,7 @@ class ExporterFactoryTest extends TestCase
         $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\OtlpGrpc\Exporter::class, $exporter);
 
-        putenv('NEW_RELIC_INSERT_KEY=exampleKey');
-        $input = 'zipkintonewrelic+https://trace-api.newrelic.com/trace/v1';
+        $input = 'zipkintonewrelic+https://trace-api.newrelic.com/trace/v1?licenseKey="23423423';
         $factory = new ExporterFactory('test.zipkintonewrelic');
         $exporter = $factory->fromConnectionString($input);
         $this->assertInstanceOf(Path\ZipkinToNewrelic\Exporter::class, $exporter);
@@ -67,15 +65,25 @@ class ExporterFactoryTest extends TestCase
         $factory = new ExporterFactory('test.zipkin');
         $exporter = $factory->fromConnectionString($input);
         $this->assertNull($exporter);
+
+        $input = 'otlp';
+        $factory = new ExporterFactory('test.otlp');
+        $exporter = $factory->fromConnectionString($input);
+        $this->assertNull($exporter);
     }
 
     /**
-    * @test
-    */
-    public function testHtmlInputReturnsNull()
+     * @test
+     */
+    public function testMissingLicenseKey()
     {
-        $input = '<a href="zipkin+http://zipkin:9411/api/v2/spans">Junk.com</a>';
-        $factory = new ExporterFactory('test.zipkin');
+        $input = 'newrelic+https://trace-api.newrelic.com/trace/v1';
+        $factory = new ExporterFactory('test.newrelic');
+        $exporter = $factory->fromConnectionString($input);
+        $this->assertNull($exporter);
+
+        $input = 'zipkintonewrelic+https://trace-api.newrelic.com/trace/v1';
+        $factory = new ExporterFactory('test.zipkintonewrelic');
         $exporter = $factory->fromConnectionString($input);
         $this->assertNull($exporter);
     }

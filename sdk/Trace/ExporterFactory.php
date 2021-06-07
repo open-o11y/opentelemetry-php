@@ -6,11 +6,18 @@ namespace OpenTelemetry\Sdk\Trace;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
+use Nyholm\Dsn\DsnParser;
+use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
+use OpenTelemetry\Contrib\Newrelic\Exporter as NewrelicExporter;
+use OpenTelemetry\Contrib\Otlp\Exporter as OtlpExporter;
+use OpenTelemetry\Contrib\OtlpGrpc\Exporter as OtlpGrpcExporter;
+use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
+use OpenTelemetry\Contrib\ZipkinToNewrelic\Exporter as ZipkinToNewrelicExporter;
 
 class ExporterFactory
 {
     private $name;
-    private $_allowedExporters = ['Jaeger' => true, 'Zipkin' => true, 'Newrelic' => true, 'Otlp' => true, 'Otlpgrpc' => true, 'Zipkintonewrelic' => true];
+    private $_allowedExporters = ['jaeger' => true, 'zipkin' => true, 'newrelic' => true, 'otlp' => true, 'otlpgrpc' => true, 'zipkintonewrelic' => true];
 
     public function __construct(string $name)
     {
@@ -18,15 +25,16 @@ class ExporterFactory
     }
 
     /**
-      * Selects the correct Exporter via the configuration string
-      * Currently only supports Jaeger and Zipkin exporters
+      * Returns the coresponding Exporter via the configuration string
       *
       * @param string $configurationString String containing unextracted information for Exporter creation
+      * Should follow the format: contribType+baseUrl?option1=a
+      * Query string is optional and based on the Exporter
       */
     public function fromConnectionString(string $configurationString)
     {
-        $strArr = htmlentities($configurationString);
-        $strArr = explode('+', $strArr);
+        $strArr = explode('+', $configurationString);
+        // checks if input is given with the format type+baseUrl
         if (sizeof($strArr) != 2) {
             return null;
         }
@@ -34,26 +42,31 @@ class ExporterFactory
         $contribName = strtolower($strArr[0]);
         $endpointUrl = $strArr[1];
 
-        if (!$this->_isAllowed(ucfirst($contribName))) {
+        if (!$this->_isAllowed($contribName)) {
             return null;
         }
 
-        $dynamicExporter = $this->_contribNameToPath($contribName);
+        // endpointUrl should only be null with otlp and otlpgrpc
+        $licenseKey = '';
+        if ($endpointUrl != false) {
+            $dsn = DsnParser::parse($endpointUrl);
+            $endpointUrl = (string) ($dsn->withoutParameter('licenseKey'));
+            $licenseKey = (string) ($dsn->getParameter('licenseKey'));
+        }
+ 
         switch ($contribName) {
             case 'jaeger':
-                return $exporter = $this->_generateJaeger($endpointUrl, $dynamicExporter);
+                return $exporter = $this->_generateJaeger($endpointUrl);
             case 'zipkin':
-                return $exporter = $this->_generateZipkin($endpointUrl, $dynamicExporter);
+                return $exporter = $this->_generateZipkin($endpointUrl);
             case 'newrelic':
-                return $exporter = $this->_generateNewrelic($endpointUrl, $dynamicExporter);
+                return $exporter = $this->_generateNewrelic($endpointUrl, $licenseKey);
             case 'otlp':
-                return $exporter = $this->_generateOtlp($dynamicExporter);
+                return $exporter = $this->_generateOtlp();
             case 'otlpgrpc':
-                return $exporter = $this->_generateOtlpGrpc($dynamicExporter);
+                return $exporter = $this->_generateOtlpGrpc();
             case 'zipkintonewrelic':
-                return $exporter = $this->_generateZipkinToNewrelic($endpointUrl, $dynamicExporter);
-            default:
-                return null;
+                return $exporter = $this->_generateZipkinToNewrelic($endpointUrl, $licenseKey);
             }
     }
 
@@ -62,22 +75,9 @@ class ExporterFactory
         return array_key_exists($exporter, $this->_allowedExporters) && $this->_allowedExporters[$exporter];
     }
 
-    // Handles paths with capitilized letters
-    private function _contribNameToPath(string $contribName)
+    private function _generateJaeger(string $endpointUrl)
     {
-        if ($contribName == 'zipkintonewrelic') {
-            return "OpenTelemetry\Contrib\ZipkinToNewrelic\Exporter";
-        }
-        if ($contribName == 'otlpgrpc') {
-            return "OpenTelemetry\Contrib\OtlpGrpc\Exporter";
-        }
-
-        return "OpenTelemetry\Contrib\\" . ucfirst($contribName) . "\Exporter";
-    }
-
-    private function _generateJaeger(string $endpointUrl, string $dynamicExporter)
-    {
-        $exporter = new $dynamicExporter(
+        $exporter = new JaegerExporter(
             $this->name,
             $endpointUrl,
             new Client(),
@@ -87,9 +87,9 @@ class ExporterFactory
 
         return $exporter;
     }
-    private function _generateZipkin(string $endpointUrl, string $dynamicExporter)
+    private function _generateZipkin(string $endpointUrl)
     {
-        $exporter = new $dynamicExporter(
+        $exporter = new ZipkinExporter(
             $this->name,
             $endpointUrl,
             new Client(),
@@ -99,10 +99,12 @@ class ExporterFactory
 
         return $exporter;
     }
-    private function _generateNewrelic(string $endpointUrl, string $dynamicExporter)
+    private function _generateNewrelic(string $endpointUrl, string $licenseKey)
     {
-        $licenseKey = getenv('NEW_RELIC_INSERT_KEY');
-        $exporter = new $dynamicExporter(
+        if ($licenseKey == false) {
+            return null;
+        }
+        $exporter = new NewrelicExporter(
             $this->name,
             $endpointUrl,
             $licenseKey,
@@ -114,9 +116,9 @@ class ExporterFactory
         return $exporter;
     }
 
-    private function _generateOtlp(string $dynamicExporter)
+    private function _generateOtlp()
     {
-        $exporter = new $dynamicExporter(
+        $exporter = new OtlpExporter(
             $this->name,
             new Client(),
             new HttpFactory(),
@@ -126,15 +128,17 @@ class ExporterFactory
         return $exporter;
     }
 
-    private function _generateOtlpGrpc(string $dynamicExporter)
+    private function _generateOtlpGrpc()
     {
-        return new $dynamicExporter();
+        return new OtlpGrpcExporter();
     }
    
-    private function _generateZipkinToNewrelic(string $endpointUrl, $dynamicExporter)
+    private function _generateZipkinToNewrelic(string $endpointUrl, string $licenseKey)
     {
-        $licenseKey = getenv('NEW_RELIC_INSERT_KEY');
-        $exporter = new $dynamicExporter(
+        if ($licenseKey == false) {
+            return null;
+        }
+        $exporter = new ZipkinToNewrelicExporter(
             $this->name,
             $endpointUrl,
             $licenseKey,
