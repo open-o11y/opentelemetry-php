@@ -60,7 +60,7 @@ class ExporterFactory
             case 'newrelic':
                 return $exporter = $this->generateNewrelic($endpointUrl, $args['licenseKey'] ?? null);
             case 'otlp':
-                return $exporter = $this->_generateOtlp();
+                return $exporter = $this->generateOtlp();
             case 'otlpgrpc':
                 return $exporter = $this->generateOtlpGrpc();
             case 'zipkintonewrelic':
@@ -73,7 +73,7 @@ class ExporterFactory
         return array_key_exists($exporter, $this->allowedExporters) && $this->allowedExporters[$exporter];
     }
 
-    // constructs the baseUrl from
+    // constructs the baseUrl with the arguments retrieved from the raw baseUrl
     private function parseBaseUrl($dsn)
     {
         if ($dsn == false) {
@@ -129,7 +129,7 @@ class ExporterFactory
         return $exporter;
     }
 
-    private function _generateOtlp()
+    private function generateOtlp()
     {
         $exporter = new OtlpExporter(
             $this->name,
