@@ -17,7 +17,7 @@ use OpenTelemetry\Contrib\ZipkinToNewrelic\Exporter as ZipkinToNewrelicExporter;
 class ExporterFactory
 {
     private $name;
-    private $_allowedExporters = ['jaeger' => true, 'zipkin' => true, 'newrelic' => true, 'otlp' => true, 'otlpgrpc' => true, 'zipkintonewrelic' => true];
+    private $allowedExporters = ['jaeger' => true, 'zipkin' => true, 'newrelic' => true, 'otlp' => true, 'otlpgrpc' => true, 'zipkintonewrelic' => true];
 
     public function __construct(string $name)
     {
@@ -42,40 +42,54 @@ class ExporterFactory
         $contribName = strtolower($strArr[0]);
         $endpointUrl = $strArr[1];
 
-        if (!$this->_isAllowed($contribName)) {
+        if (!$this->isAllowed($contribName)) {
             return null;
         }
 
-        // endpointUrl should only be null with otlp and otlpgrpc
-        $licenseKey = '';
-        if ($endpointUrl != false) {
-            $dsn = DsnParser::parse($endpointUrl);
-            $endpointUrl = (string) ($dsn->withoutParameter('licenseKey'));
-            $licenseKey = (string) ($dsn->getParameter('licenseKey'));
-        }
- 
+        $args = [];
+        // endpoint is only parsed if it is provided
+        $dsn = empty($endpointUrl) ? '' : DsnParser::parse($endpointUrl);
+        $endpointUrl = $this->parseBaseUrl($dsn);
+        // parameters are only retrieved if there was an endpoint given
+        $args = empty($dsn) ? '' : $dsn->getParameters();
+        
         switch ($contribName) {
             case 'jaeger':
-                return $exporter = $this->_generateJaeger($endpointUrl);
+                return $exporter = $this->generateJaeger($endpointUrl);
             case 'zipkin':
-                return $exporter = $this->_generateZipkin($endpointUrl);
+                return $exporter = $this->generateZipkin($endpointUrl);
             case 'newrelic':
-                return $exporter = $this->_generateNewrelic($endpointUrl, $licenseKey);
+                return $exporter = $this->generateNewrelic($endpointUrl, $args['licenseKey'] ?? null);
             case 'otlp':
                 return $exporter = $this->_generateOtlp();
             case 'otlpgrpc':
-                return $exporter = $this->_generateOtlpGrpc();
+                return $exporter = $this->generateOtlpGrpc();
             case 'zipkintonewrelic':
-                return $exporter = $this->_generateZipkinToNewrelic($endpointUrl, $licenseKey);
+                return $exporter = $this->generateZipkinToNewrelic($endpointUrl, $args['licenseKey'] ?? null);
             }
     }
 
-    private function _isAllowed(string $exporter)
+    private function isAllowed(string $exporter)
     {
-        return array_key_exists($exporter, $this->_allowedExporters) && $this->_allowedExporters[$exporter];
+        return array_key_exists($exporter, $this->allowedExporters) && $this->allowedExporters[$exporter];
     }
 
-    private function _generateJaeger(string $endpointUrl)
+    // constructs the baseUrl from
+    private function parseBaseUrl($dsn)
+    {
+        if ($dsn == false) {
+            return null;
+        }
+        $parsedUrl = '';
+        $parsedUrl .= empty($dsn->getScheme()) ? '' : $dsn->getScheme() . '://';
+        $parsedUrl .= empty($dsn->getHost()) ? '' : $dsn->getHost();
+        $parsedUrl .= empty($dsn->getPort()) ? '' : ':' . $dsn->getPort();
+        $parsedUrl .= empty($dsn->getPath()) ? '' : $dsn->getPath();
+
+        return $parsedUrl;
+    }
+
+    private function generateJaeger(string $endpointUrl)
     {
         $exporter = new JaegerExporter(
             $this->name,
@@ -87,7 +101,7 @@ class ExporterFactory
 
         return $exporter;
     }
-    private function _generateZipkin(string $endpointUrl)
+    private function generateZipkin(string $endpointUrl)
     {
         $exporter = new ZipkinExporter(
             $this->name,
@@ -99,7 +113,7 @@ class ExporterFactory
 
         return $exporter;
     }
-    private function _generateNewrelic(string $endpointUrl, string $licenseKey)
+    private function generateNewrelic(string $endpointUrl, $licenseKey)
     {
         if ($licenseKey == false) {
             return null;
@@ -128,12 +142,12 @@ class ExporterFactory
         return $exporter;
     }
 
-    private function _generateOtlpGrpc()
+    private function generateOtlpGrpc()
     {
         return new OtlpGrpcExporter();
     }
    
-    private function _generateZipkinToNewrelic(string $endpointUrl, string $licenseKey)
+    private function generateZipkinToNewrelic(string $endpointUrl, $licenseKey)
     {
         if ($licenseKey == false) {
             return null;
