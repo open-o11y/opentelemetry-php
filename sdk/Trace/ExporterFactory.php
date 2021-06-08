@@ -46,12 +46,11 @@ class ExporterFactory
             return null;
         }
 
-        $args = [];
         // endpoint is only parsed if it is provided
         $dsn = empty($endpointUrl) ? '' : DsnParser::parse($endpointUrl);
         $endpointUrl = $this->parseBaseUrl($dsn);
         // parameters are only retrieved if there was an endpoint given
-        $args = empty($dsn) ? '' : $dsn->getParameters();
+        $args = empty($dsn) ? [] : $dsn->getParameters();
         
         switch ($contribName) {
             case 'jaeger':
