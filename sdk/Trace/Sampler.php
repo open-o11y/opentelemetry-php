@@ -15,7 +15,7 @@ use OpenTelemetry\Trace as API;
 interface Sampler
 {
     /**
-     * Returns SamplingResult.
+     * Returns the sampling Decision that will be used in Span creation.
      *
      * @param Context $parentContext Context with parent Span. The Span's SpanContext may be invalid to indicate a root span.
      * @param string $traceId TraceId of the Span to be created. It can be different from the TraceId in the SpanContext.
