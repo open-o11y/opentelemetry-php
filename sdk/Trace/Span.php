@@ -355,7 +355,7 @@ class Span implements API\Span
         }
         $result = join("\n", $result);
         if ($prev)
-            $result  .= "\n" . jTraceEx($prev, $seen);
+            $result  .= "\n" . getStackTrace($prev, $seen);
     
         return $result;
     }
