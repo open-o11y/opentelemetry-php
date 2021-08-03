@@ -85,6 +85,68 @@ class TracingTest extends TestCase
         $this->assertCount(4, $tracer->getSpans());
     }
 
+    public function testGetStackTrace()
+    {
+        $stacktrace = 'Exception: Thrown from here
+ at OpenTelemetry.Tests.Sdk.Unit.Trace.TracingTest.testGetStackTrace(TracingTest.php:101)
+ at PHPUnit.Framework.TestCase.runTest(TestCase.php:1527)
+ at PHPUnit.Framework.TestCase.runBare(TestCase.php:1133)
+ at PHPUnit.Framework.TestResult.run(TestResult.php:722)
+ at PHPUnit.Framework.TestCase.run(TestCase.php:885)
+ at PHPUnit.Framework.TestSuite.run(TestSuite.php:677)
+ ... 6 more';
+        $actualStacktrace = '';
+        
+        try {
+            throw new \Exception('Thrown from here');
+        } catch (\Exception $e) {
+            $actualStacktrace = Span::getStackTrace($e);
+        }
+
+        $this->assertEquals($stacktrace, $actualStacktrace);
+    }
+
+    public function testGetStackTraceWithCause()
+    {
+        $stacktrace = 'Exception: Thrown from fail1()
+ at OpenTelemetry.Tests.Sdk.Unit.Trace.fail1(TracingTest.php:137)
+ at OpenTelemetry.Tests.Sdk.Unit.Trace.TracingTest.testGetStackTraceWithCause(TracingTest.php:142)
+ at PHPUnit.Framework.TestCase.runTest(TestCase.php:1527)
+ at PHPUnit.Framework.TestCase.runBare(TestCase.php:1133)
+ at PHPUnit.Framework.TestResult.run(TestResult.php:722)
+ at PHPUnit.Framework.TestCase.run(TestCase.php:885)
+ at PHPUnit.Framework.TestSuite.run(TestSuite.php:677)
+ ... 6 more
+Caused by: Exception: Thrown from fail2()
+ at OpenTelemetry.Tests.Sdk.Unit.Trace.fail2(TracingTest.php:129)
+ at OpenTelemetry.Tests.Sdk.Unit.Trace.fail1(TracingTest.php:135)
+ ... 12 more';
+ 
+        $actualStacktrace = '';
+
+        function fail2()
+        {
+            throw new \Exception('Thrown from fail2()');
+        }
+        
+        function fail1()
+        {
+            try {
+                fail2();
+            } catch (\Exception $e1) {
+                throw new \Exception('Thrown from fail1()', 0, $e1);
+            }
+        }
+
+        try {
+            fail1();
+        } catch (\Exception $e) {
+            $actualStacktrace = Span::getStackTrace($e);
+        }
+
+        $this->assertEquals($stacktrace, $actualStacktrace);
+    }
+
     public function testCreateSpan()
     {
         $tracerProvider = new SDK\TracerProvider();
